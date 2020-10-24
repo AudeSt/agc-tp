@@ -130,8 +130,8 @@ def dereplication_fulllength(amplicon_file, minseqlen, mincount, max_studied=100
             occurences[index]=occurences[index]+1
 #         i+=1
 #         print(len(occurences))
-        if len(occurences)>max_studied:
-            break
+#         if len(occurences)>max_studied:
+#             break
 
     zipped=sorted(zip(occurences,unique_sequences),reverse=True)
     unique_sorted=[seq for _,seq in zipped]
@@ -140,8 +140,73 @@ def dereplication_fulllength(amplicon_file, minseqlen, mincount, max_studied=100
     for i in range(len(occurences_sorted)):
         if occurences_sorted[i]>mincount:
             yield [unique_sequences[i], occurences_sorted[i]]
+
+#==============================================================
+# Part 2
+
+def get_chunks(sequence, chunk_size):
     
+    N_sous_sequences=len(sequence)//chunk_size
     
+    sous_sequences=[sequence[i*chunk_size:(i+1)*chunk_size] 
+                    for i in range(N_sous_sequences)]
+    
+    return sous_sequences
+    
+# print(get_chunks('AAATTTCCCGGGAAATTTGGGCCC',5))
+
+def cut_kmer(sequence, kmer_size):
+    unique_kmers=[]
+    for i in range(len(sequence)):
+        kmer=sequence[i:i+kmer_size]
+        if kmer not in unique_kmers and len(kmer)==kmer_size:
+            yield kmer
+
+# resu=cut_kmer('AAATTTGCCC',5)
+# for res in resu:
+#     print(res)
+
+def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
+    cut_kmer_result=cut_kmer(sequence, kmer_size)
+    for kmer in cut_kmer_result:
+        if kmer not in list(kmer_dict.keys()):
+            kmer_dict[kmer]=[id_seq]
+        else: 
+            if id_seq not in kmer_dict[kmer]:
+                kmer_dict[kmer]=kmer_dict[kmer].append(id_seq)
+            
+    return kmer_dict
+
+# kmer_dict={}
+# sequence='AAATTTTTTTCGCGGGAAAA'
+# id_seq=0
+# kmer_size=3
+# print(get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size))
+
+def search_mates(kmer_dict, sequence, kmer_size):
+    
+    return [i[0] for i in 
+            Counter([ids for kmer in cut_kmer(sequence, kmer_size) 
+                     if kmer in kmer_dict 
+                     for ids in kmer_dict[kmer]]).most_common(8)]
+
+def get_identity(alignment_list):
+    N_identical=0
+    seq0=alignment_list[0]
+    seq1=alignment_list[1]
+    for i in range(len(seq0)):
+        if seq0[i]==seq1[i]:
+            N_identical+=1
+            
+    return N_identical/len(seq0)
+
+# print(get_identity(['AAATGCGTAA','AAA___GTAA']))
+def get_unique(ids):
+    return {}.fromkeys(ids).keys()
+
+def detect_chimera(perc_identity_matrix):
+    
+
 #==============================================================
 # Main program
 #==============================================================
@@ -164,11 +229,11 @@ def main():
 #     for sequence in sequences :
 #         print(sequence[0:100])
 #         i=i+1
-#         if i > 10:
-#             break
-    result=dereplication_fulllength(amplicon_file, minseqlen,mincount)
-#     for res in result:
-#         print(res)
+# #         if i > 10:
+# #             break
+#     result=dereplication_fulllength(amplicon_file, minseqlen,mincount)
+# #     for res in result:
+# #         print(res)
 
 
 if __name__ == '__main__':
