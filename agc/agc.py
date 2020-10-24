@@ -113,6 +113,35 @@ def read_fasta(amplicon_file, minseqlen):
         if len(sequence)>=minseqlen:
             yield sequence
 
+def dereplication_fulllength(amplicon_file, minseqlen, mincount, max_studied=1000):
+    unique_sequences=[]
+    occurences=[]
+#     i=0
+
+    sequences=read_fasta(amplicon_file, minseqlen)
+    for sequence in sequences:
+
+        if sequence not in unique_sequences:
+
+            unique_sequences.append(sequence)
+            occurences.append(1)
+        else : 
+            index=unique_sequences.index(sequence)
+            occurences[index]=occurences[index]+1
+#         i+=1
+#         print(len(occurences))
+        if len(occurences)>max_studied:
+            break
+
+    zipped=sorted(zip(occurences,unique_sequences),reverse=True)
+    unique_sorted=[seq for _,seq in zipped]
+    occurences_sorted=[occ for occ,_ in zipped]
+    print(occurences_sorted)
+    for i in range(len(occurences_sorted)):
+        if occurences_sorted[i]>mincount:
+            yield [unique_sequences[i], occurences_sorted[i]]
+    
+    
 #==============================================================
 # Main program
 #==============================================================
@@ -130,10 +159,17 @@ def main():
     output_file = args.output_file
     
     # Part 1:
-    sequences=read_fasta(amplicon_file, minseqlen)
-    print(next(sequences))
-    print(next(sequences))
-    print(next(sequences))
-    print(next(sequences))
+#     sequences=read_fasta(amplicon_file, minseqlen)
+#     i=0
+#     for sequence in sequences :
+#         print(sequence[0:100])
+#         i=i+1
+#         if i > 10:
+#             break
+    result=dereplication_fulllength(amplicon_file, minseqlen,mincount)
+#     for res in result:
+#         print(res)
+
+
 if __name__ == '__main__':
     main()
