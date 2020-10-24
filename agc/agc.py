@@ -75,38 +75,42 @@ def read_fasta(amplicon_file, minseqlen):
     '''
     Sequences generator.
     '''
-    file = gzip.open(amplicon_file)
-    lines=file.readlines()
-    print(lines[0])
+    with gzip.open(amplicon_file, 'rb') as file:
+        lines=[line.decode().strip() for line in file]
+
+    names_index=[]
+    sequences=[]
     
-    return lines
-        names_index=[]
-        sequences=[]
+    for i in range(len(lines)):
+        line=lines[i]
 
-        for i in range(len(lines)):
+        if line[0] == '>':
+            names_index.append(i)
 
-            if lines[i][0] == '>':
-                names_index.append(i)
+    for i in range (len(names_index)):
 
-        for i in range (len(names_index)):
+        start_index=names_index[i]
 
-            start_index=names_index[i]
+        if i!=len(names_index)-1:
 
-            if i!=len(names_index)-1:
+            end_index=names_index[i+1]
+            sequence=''.join([lines[j] for j in range(start_index,end_index)])
 
-                end_index=names_index[i+1]
-                sequence=''.join([lines[j] for j in range(start_index,end_index)])
+        else :
 
-            else :
+            end_index=len(lines)
+            sequence=''.join([lines[j] for j in range(start_index,end_index)])
 
-                end_index=len(lines)
-                sequence=''.join([lines[j] for j in range(start_index,end_index)])
+        sequences.append(sequence)
 
-            sequences.append(sequence)
-    for sequence in sequences:
-        print(sequence,minseqlen)
+
+    end_of_name_index=[sequences[i].find('fastq') for i in range(len(sequences))]
+    names=[sequences[i][:end_of_name_index[i]+5] for i in range(len(sequences))]
+
+    clean_sequences=[sequences[i][end_of_name_index[i]+5:] for i in range(len(sequences))]
+
+    for sequence in clean_sequences:
         if len(sequence)>=minseqlen:
-            print(len(sequence),minseqlen)
             yield sequence
 
 #==============================================================
@@ -127,10 +131,9 @@ def main():
     
     # Part 1:
     sequences=read_fasta(amplicon_file, minseqlen)
-    print(sequences)
-#     print(next(sequences))
-#     print(next(sequences))
-#     print(next(sequences))
-#     print(next(sequences))
+    print(next(sequences))
+    print(next(sequences))
+    print(next(sequences))
+    print(next(sequences))
 if __name__ == '__main__':
     main()
