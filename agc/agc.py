@@ -23,13 +23,13 @@ from collections import Counter
 # ftp://ftp.ncbi.nih.gov/blast/matrices/
 import nwalign3 as nw
 
-__author__ = "Your Name"
+__author__ = "STERLIN Aude"
 __copyright__ = "Universite Paris Diderot"
-__credits__ = ["Your Name"]
+__credits__ = ["STERLIN Aude"]
 __license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Your Name"
-__email__ = "your@email.fr"
+__maintainer__ = "STERLIN Aude"
+__email__ = "sterlin.aude@gmail.com"
 __status__ = "Developpement"
 
 
@@ -68,6 +68,46 @@ def get_arguments():
     parser.add_argument('-o', '-output_file', dest='output_file', type=str,
                         default="OTU.fasta", help="Output file")
     return parser.parse_args()
+#==============================================================
+# 1 : Dé-duplication en séquence "complète"
+
+def read_fasta(amplicon_file, minseqlen):
+    '''
+    Sequences generator.
+    '''
+    file = gzip.open(amplicon_file)
+    lines=file.readlines()
+    print(lines[0])
+    
+    return lines
+        names_index=[]
+        sequences=[]
+
+        for i in range(len(lines)):
+
+            if lines[i][0] == '>':
+                names_index.append(i)
+
+        for i in range (len(names_index)):
+
+            start_index=names_index[i]
+
+            if i!=len(names_index)-1:
+
+                end_index=names_index[i+1]
+                sequence=''.join([lines[j] for j in range(start_index,end_index)])
+
+            else :
+
+                end_index=len(lines)
+                sequence=''.join([lines[j] for j in range(start_index,end_index)])
+
+            sequences.append(sequence)
+    for sequence in sequences:
+        print(sequence,minseqlen)
+        if len(sequence)>=minseqlen:
+            print(len(sequence),minseqlen)
+            yield sequence
 
 #==============================================================
 # Main program
@@ -78,7 +118,19 @@ def main():
     """
     # Get arguments
     args = get_arguments()
-
-
+    amplicon_file = args.amplicon_file
+    minseqlen = args.minseqlen
+    mincount = args.mincount
+    chunk_size = args.chunk_size
+    kmer_size = args.kmer_size
+    output_file = args.output_file
+    
+    # Part 1:
+    sequences=read_fasta(amplicon_file, minseqlen)
+    print(sequences)
+#     print(next(sequences))
+#     print(next(sequences))
+#     print(next(sequences))
+#     print(next(sequences))
 if __name__ == '__main__':
     main()
