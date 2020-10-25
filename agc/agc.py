@@ -55,7 +55,7 @@ def get_arguments():
     parser = argparse.ArgumentParser(description=__doc__, usage=
                                      "{0} -h"
                                      .format(sys.argv[0]))
-    parser.add_argument('-i', '-amplicon_file', dest='amplicon_file', type=isfile, required=True, 
+    parser.add_argument('-i', '-amplicon_file', dest='amplicon_file', type=isfile, required=True,
                         help="Amplicon is a compressed fasta file (.fasta.gz)")
     parser.add_argument('-s', '-minseqlen', dest='minseqlen', type=int, default = 400,
                         help="Minimum sequence length for dereplication")
@@ -80,7 +80,7 @@ def read_fasta(amplicon_file, minseqlen):
 
     names_index=[]
     sequences=[]
-    
+
     for i in range(len(lines)):
         line=lines[i]
 
@@ -105,7 +105,7 @@ def read_fasta(amplicon_file, minseqlen):
 
 
     end_of_name_index=[sequences[i].find('fastq') for i in range(len(sequences))]
-    names=[sequences[i][:end_of_name_index[i]+5] for i in range(len(sequences))]
+#     names=[sequences[i][:end_of_name_index[i]+5] for i in range(len(sequences))]
 
     clean_sequences=[sequences[i][end_of_name_index[i]+5:] for i in range(len(sequences))]
 
@@ -113,10 +113,13 @@ def read_fasta(amplicon_file, minseqlen):
         if len(sequence)>=minseqlen:
             yield sequence
 
-def dereplication_fulllength(amplicon_file, minseqlen, mincount, max_studied=1000):
+def dereplication_fulllength(amplicon_file, minseqlen, mincount):
+    '''
+    returns a generator of unique sequences from amplicon_file,
+    where their occurence is above mincount
+    '''
     unique_sequences=[]
     occurences=[]
-#     i=0
 
     sequences=read_fasta(amplicon_file, minseqlen)
     for sequence in sequences:
@@ -125,13 +128,9 @@ def dereplication_fulllength(amplicon_file, minseqlen, mincount, max_studied=100
 
             unique_sequences.append(sequence)
             occurences.append(1)
-        else : 
+        else :
             index=unique_sequences.index(sequence)
             occurences[index]=occurences[index]+1
-#         i+=1
-#         print(len(occurences))
-#         if len(occurences)>max_studied:
-#             break
 
     zipped=sorted(zip(occurences,unique_sequences),reverse=True)
     unique_sorted=[seq for _,seq in zipped]
@@ -139,73 +138,72 @@ def dereplication_fulllength(amplicon_file, minseqlen, mincount, max_studied=100
     print(occurences_sorted)
     for i in range(len(occurences_sorted)):
         if occurences_sorted[i]>mincount:
-            yield [unique_sequences[i], occurences_sorted[i]]
+            yield [unique_sorted[i], occurences_sorted[i]]
 
 #==============================================================
 # Part 2
 
 def get_chunks(sequence, chunk_size):
-    
-    N_sous_sequences=len(sequence)//chunk_size
-    
-    sous_sequences=[sequence[i*chunk_size:(i+1)*chunk_size] 
-                    for i in range(N_sous_sequences)]
-    
+
+    '''
+    returns a list of subsequences from 'sequence' of size 'chunk_size'
+    '''
+    n_sous_sequences=len(sequence)//chunk_size
+
+    sous_sequences=[sequence[i*chunk_size:(i+1)*chunk_size]
+                    for i in range(n_sous_sequences)]
+
     return sous_sequences
-    
-# print(get_chunks('AAATTTCCCGGGAAATTTGGGCCC',5))
 
 def cut_kmer(sequence, kmer_size):
+    '''
+    returns a generator of all kmers of size 'kmer_size' in 'sequence'
+    '''
     unique_kmers=[]
     for i in range(len(sequence)):
         kmer=sequence[i:i+kmer_size]
         if kmer not in unique_kmers and len(kmer)==kmer_size:
             yield kmer
 
-# resu=cut_kmer('AAATTTGCCC',5)
-# for res in resu:
-#     print(res)
 
 def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
+    '''
+    returns a dictionary of all kmers as key and 'id_seq' as value
+    '''
     cut_kmer_result=cut_kmer(sequence, kmer_size)
     for kmer in cut_kmer_result:
         if kmer not in list(kmer_dict.keys()):
             kmer_dict[kmer]=[id_seq]
-        else: 
+        else:
             if id_seq not in kmer_dict[kmer]:
                 kmer_dict[kmer]=kmer_dict[kmer].append(id_seq)
-            
+
     return kmer_dict
 
-# kmer_dict={}
-# sequence='AAATTTTTTTCGCGGGAAAA'
-# id_seq=0
-# kmer_size=3
-# print(get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size))
 
 def search_mates(kmer_dict, sequence, kmer_size):
-    
-    return [i[0] for i in 
-            Counter([ids for kmer in cut_kmer(sequence, kmer_size) 
-                     if kmer in kmer_dict 
+    '''
+    returns the 8 most similar sequences to an entry 'sequence'
+    '''
+    return [i[0] for i in
+            Counter([ids for kmer in cut_kmer(sequence, kmer_size)
+                     if kmer in kmer_dict
                      for ids in kmer_dict[kmer]]).most_common(8)]
 
 def get_identity(alignment_list):
-    N_identical=0
+
+    '''
+    returns the identity score between two aligned sequences
+    '''
+    n_identical=0
     seq0=alignment_list[0]
     seq1=alignment_list[1]
     for i in range(len(seq0)):
         if seq0[i]==seq1[i]:
-            N_identical+=1
-            
-    return N_identical/len(seq0)
+            n_identical+=1
 
-# print(get_identity(['AAATGCGTAA','AAA___GTAA']))
-def get_unique(ids):
-    return {}.fromkeys(ids).keys()
+    return n_identical/len(seq0)
 
-def detect_chimera(perc_identity_matrix):
-    
 
 #==============================================================
 # Main program
@@ -216,25 +214,12 @@ def main():
     """
     # Get arguments
     args = get_arguments()
-    amplicon_file = args.amplicon_file
-    minseqlen = args.minseqlen
-    mincount = args.mincount
-    chunk_size = args.chunk_size
-    kmer_size = args.kmer_size
-    output_file = args.output_file
-    
-    # Part 1:
-#     sequences=read_fasta(amplicon_file, minseqlen)
-#     i=0
-#     for sequence in sequences :
-#         print(sequence[0:100])
-#         i=i+1
-# #         if i > 10:
-# #             break
-#     result=dereplication_fulllength(amplicon_file, minseqlen,mincount)
-# #     for res in result:
-# #         print(res)
-
+#     amplicon_file = args.amplicon_file
+#     minseqlen = args.minseqlen
+#     mincount = args.mincount
+#     chunk_size = args.chunk_size
+#     kmer_size = args.kmer_size
+#     output_file = args.output_file
 
 if __name__ == '__main__':
     main()
